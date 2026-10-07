@@ -84,3 +84,11 @@ def test_review_chat_id_must_be_a_number(monkeypatch):
         monkeypatch.setenv(key, value)
     with pytest.raises(ConfigError, match="REVIEW_CHAT_ID"):
         load_secrets(None)
+
+
+def test_env_file_wins_over_inherited_environment(monkeypatch, tmp_path):
+    for var in SECRET_VARS:
+        monkeypatch.setenv(var, "-1" if var == "REVIEW_CHAT_ID" else "from-environment")
+    env_file = tmp_path / ".env"
+    env_file.write_text("TELEGRAM_BOT_TOKEN=from-file\n", encoding="utf-8")
+    assert load_secrets(env_file).telegram_bot_token == "from-file"

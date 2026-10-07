@@ -155,7 +155,8 @@ def load_settings(path: str | Path) -> Settings:
 
 def load_secrets(env_file: str | Path | None = ".env") -> Secrets:
     if env_file and Path(env_file).exists():
-        load_dotenv(env_file, override=False)
+        # .env wins over variables inherited from the system (e.g. another bot's token).
+        load_dotenv(env_file, override=True)
     missing = [var for var in SECRET_VARS if not os.environ.get(var)]
     if missing:
         raise ConfigError("Missing in .env: " + ", ".join(missing))
