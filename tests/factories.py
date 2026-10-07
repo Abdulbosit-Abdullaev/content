@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import dataclasses
+from datetime import UTC, datetime
 from pathlib import Path
 
 from contentbot.config import Secrets, Settings, load_settings
-from contentbot.models import Candidate
+from contentbot.db import Database, VideoRow
+from contentbot.models import Candidate, Status
 
 ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_NOW = datetime(2026, 10, 7, 3, 0, tzinfo=UTC)  # 08:00 in Tashkent
 
 
 def make_candidate(**overrides) -> Candidate:
@@ -46,3 +49,12 @@ def make_secrets(**overrides) -> Secrets:
     )
     values.update(overrides)
     return Secrets(**values)
+
+
+def make_video(db: Database, *, now: datetime | None = None, status: Status = Status.IN_REVIEW, **fields) -> VideoRow:
+    """Insert a video row. Candidate fields go to make_candidate, the rest to update_video."""
+    candidate_fields = {k: fields.pop(k) for k in list(fields) if k in Candidate.__dataclass_fields__}
+    video_id = db.insert_video(make_candidate(**candidate_fields), status, now or DEFAULT_NOW)
+    if fields:
+        db.update_video(video_id, **fields)
+    return db.get_video(video_id)
