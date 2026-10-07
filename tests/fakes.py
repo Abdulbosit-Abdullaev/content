@@ -54,3 +54,76 @@ class FakeClaudeJSON:
     async def ask_json(self, **kwargs):
         self.calls.append(kwargs)
         return self.replies.pop(0)
+
+
+from pathlib import Path  # noqa: E402
+
+from contentbot.pipeline.media import MediaError  # noqa: E402
+
+
+def telegram_error(method: str = "send_video"):
+    from aiogram.exceptions import TelegramNetworkError
+    from aiogram.methods import SendMessage
+
+    return TelegramNetworkError(method=SendMessage(chat_id=1, text="x"), message=f"{method} failed")
+
+
+class FakeBot:
+    """Records Bot API calls and returns objects with a message_id, like aiogram does."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, dict, int | None]] = []
+        self.failures: dict[str, int] = {}
+        self._next_id = 1000
+
+    async def _call(self, method: str, kwargs: dict):
+        if self.failures.get(method, 0) > 0:
+            self.failures[method] -= 1
+            self.calls.append((method, kwargs, None))
+            raise telegram_error(method)
+        self._next_id += 1
+        self.calls.append((method, kwargs, self._next_id))
+        return SimpleNamespace(message_id=self._next_id)
+
+    async def send_video(self, **kwargs):
+        return await self._call("send_video", kwargs)
+
+    async def send_message(self, **kwargs):
+        return await self._call("send_message", kwargs)
+
+    async def edit_message_media(self, **kwargs):
+        return await self._call("edit_message_media", kwargs)
+
+    async def edit_message_caption(self, **kwargs):
+        return await self._call("edit_message_caption", kwargs)
+
+    async def edit_message_reply_markup(self, **kwargs):
+        return await self._call("edit_message_reply_markup", kwargs)
+
+    async def delete_message(self, **kwargs):
+        await self._call("delete_message", kwargs)
+        return True
+
+    async def download(self, file, destination=None, **kwargs):
+        self.calls.append(("download", {"file": file, "destination": destination}, None))
+        Path(destination).write_bytes(b"audio")
+
+    def named(self, method: str) -> list[dict]:
+        return [kwargs for name, kwargs, _ in self.calls if name == method]
+
+    def last_id(self, method: str) -> int:
+        return [message_id for name, _, message_id in self.calls if name == method][-1]
+
+
+class FakeMedia:
+    def __init__(self, fail: bool = False) -> None:
+        self.fail = fail
+        self.renders: list[tuple] = []
+
+    async def render(self, src, mode, dest, music=None):
+        self.renders.append((mode, music))
+        if self.fail:
+            raise MediaError("ffmpeg exploded")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(b"rendered")
+        return dest
