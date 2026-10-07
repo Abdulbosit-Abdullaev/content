@@ -127,3 +127,17 @@ class FakeMedia:
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(b"rendered")
         return dest
+
+
+import asyncio  # noqa: E402
+
+
+class FakePipeline:
+    def __init__(self) -> None:
+        self.lock = asyncio.Lock()
+        self.runs: list[str] = []
+        self.sources: list = []
+
+    async def run(self, trigger: str = "schedule") -> dict:
+        self.runs.append(trigger)
+        return {}
