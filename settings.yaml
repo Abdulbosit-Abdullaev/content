@@ -1,0 +1,125 @@
+# Evim content bot settings. Times are Tashkent time, always in quotes: "HH:MM".
+timezone: Asia/Tashkent
+search_time: "07:00"
+post_times: ["10:00", "13:00", "16:00", "19:00"]
+
+candidates_per_day: 8        # videos sent to the review group each day
+max_per_category: 2          # at most this many from one category per day
+review_expiry_hours: 48      # untouched candidates are removed after this
+
+duration:
+  min_s: 5
+  max_s: 120
+
+min_views:                   # Pinterest has no view counts
+  youtube: 1000
+  tiktok: 2000
+  instagram: 1000
+
+keywords_per_run: 6          # keywords used by each search (rotating)
+youtube_per_keyword: 5       # YouTube results per keyword
+ai_check_limit: 30           # candidates sent to the AI check per run
+min_ai_score: 6              # 0-10; lower scores are never sent for review
+
+ai:
+  model: claude-opus-5-5     # or claude-sonnet-5-5 (about half the cost)
+
+apify:
+  monthly_budget_usd: 5      # Apify sources pause when this month's estimate reaches it
+  actors:
+    tiktok:
+      actor_id: clockworks/tiktok-scraper
+      price_per_1000: 1.70
+      max_results: 20
+    instagram:
+      actor_id: apify/instagram-hashtag-scraper
+      price_per_1000: 2.60
+      max_results: 20
+    pinterest:
+      actor_id: cirkit/pinterest-pins-scraper
+      price_per_1000: 2.00
+      max_results: 30
+
+ytdlp_cookies_file: null     # path to a cookies.txt if YouTube blocks the server
+ffmpeg_path: ffmpeg
+ffprobe_path: ffprobe
+data_dir: data
+music_dir: music
+
+footer: |
+  ☎️ Aloqa uchun:
+  +998557770007
+  +998991330007
+
+  📍 Manzil: Toshkent shahar, Kichik Halqa Yo'li, 151A/1
+  🕑 Ish vaqti: 08:00-19:00
+
+  📢 Telegram: @evim_uzb
+  📸 Instagram: instagram.com/evim_uzb
+
+caption_examples:
+  - |-
+    #mexanizm Eng eksklyuziv mexanizmlar Evimda! Puma — 3 bosqichda ochiluvchi, divan hamda krovat vazifasini bajarishga yordam beradigan mexanizm
+  - |-
+    #lentali_klipsa Evimda lentali klipsa! Ushbu plastmast lentali klipsalar orqali ishlaringiz karrasiga tezlashadi!
+  - |-
+    Trenddagi yog’och ножкалар
+
+    2026-yildagi eng trendda yurgan mebel oyoqlari aynan yog’ochlilar hisoblanadi.
+
+    Evim sizning trenddan qolib ketmasligingizni ta’minlaydi!
+  - |-
+    2026-yilga kelib tabiiylik urfga kirdi!
+
+    Mebellar uchun yog'och oyoqlar barcha mebel xarid qiluvchilarda katta qiziqish uyg'otdi. Bu qiziqishlar uchun Evim sizga keng tanlov imkoniyatlarini beradi!
+
+    Shunchaki keling, ko'ring, yoqqanini xarid qiling!
+  - |-
+    Diary - "mishkovina", ya'ni qopdek to'qish orqali tikilgan qattiq mato!
+  - |-
+    Novella ✨
+
+    Haqiqiy nafislik na'munasi!
+
+seed_keywords:
+  en:
+    - sofa mechanism
+    - sofa bed mechanism
+    - recliner mechanism
+    - upholstery
+    - sofa upholstery
+    - furniture foam
+    - upholstery fabric
+    - sofa legs
+    - furniture legs
+    - "#upholstery"
+    - "#sofabed"
+    - "#upholsterywork"
+  ru:
+    - перетяжка дивана
+    - механизм дивана
+    - механизм еврокнижка
+    - поролон для мебели
+    - мебельная ткань
+    - ножки для дивана
+    - обивка мебели
+    - "#перетяжкамебели"
+  tr:
+    - koltuk döşeme
+    - kanepe mekanizması
+    - mobilya ayağı
+    - döşemelik kumaş
+    - mobilya süngeri
+    - "#döşeme"
+  uz:
+    - mebel oyoqlari
+    - yumshoq mebel
+    - divan ishlab chiqarish
+    - "#mebel"
+  zh:
+    - 沙发机构
+    - 沙发面料
+    - 沙发海绵
+    - 沙发脚
+    - 沙发制作
+    - 软包
