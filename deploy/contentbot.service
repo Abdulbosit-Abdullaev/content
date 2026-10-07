@@ -1,0 +1,19 @@
+# Optional: run the bot as a service that restarts on crash and after reboot.
+# 1) Replace REPLACE_WITH_LINUX_USER and /opt/contentbot below.
+# 2) sudo cp deploy/contentbot.service /etc/systemd/system/
+# 3) sudo systemctl daemon-reload && sudo systemctl enable --now contentbot
+[Unit]
+Description=Evim content bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=REPLACE_WITH_LINUX_USER
+WorkingDirectory=/opt/contentbot
+ExecStart=/opt/contentbot/.venv/bin/python main.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
