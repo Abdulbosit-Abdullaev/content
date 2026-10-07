@@ -186,3 +186,30 @@ async def test_expire_old_after_48_hours(env):
     assert v.status is Status.EXPIRED and not Path(v.rendered_path).exists()
     markup = env.bot.named("edit_message_reply_markup")[-1]["reply_markup"]
     assert markup.inline_keyboard[0][0].text == texts.EXPIRED
+
+
+async def test_cancel_after_two_days_does_not_expire_the_video(env):
+    video_id = await sent_video(env)
+    await env.service.approve(video_id)
+    env.service.clock = lambda: NOW + timedelta(hours=50)
+    assert await env.service.undo(video_id) is Outcome.OK
+    assert await env.service.expire_old(NOW + timedelta(hours=51)) == 0
+    assert env.db.get_video(video_id).status is Status.IN_REVIEW
+
+
+async def test_failed_message_update_rolls_back_sound_change(env):
+    video_id = await sent_video(env)
+    before = env.db.get_video(video_id)
+    env.bot.failures["edit_message_media"] = 1
+    assert await env.service.set_sound(video_id, "mute") is Outcome.FAILED
+    after = env.db.get_video(video_id)
+    assert (after.audio_mode, after.rendered_path) == ("original", before.rendered_path)
+    assert Path(before.rendered_path).exists()
+    assert list((env.settings.data_dir / "videos").glob("*_mute_*.mp4")) == []
+
+
+async def test_video_uploads_get_a_long_timeout(env):
+    video_id = await sent_video(env)
+    await env.service.set_sound(video_id, "mute")
+    assert env.bot.named("send_video")[0]["request_timeout"] == 300
+    assert env.bot.named("edit_message_media")[0]["request_timeout"] == 300

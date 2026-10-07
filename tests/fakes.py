@@ -61,11 +61,13 @@ from pathlib import Path  # noqa: E402
 from contentbot.pipeline.media import MediaError  # noqa: E402
 
 
-def telegram_error(method: str = "send_video"):
-    from aiogram.exceptions import TelegramNetworkError
+def telegram_error(method: str = "send_video", kind: str = "server"):
+    """kind="server": Telegram answered with an error (safe to retry); kind="network": the reply never arrived."""
+    from aiogram.exceptions import TelegramNetworkError, TelegramServerError
     from aiogram.methods import SendMessage
 
-    return TelegramNetworkError(method=SendMessage(chat_id=1, text="x"), message=f"{method} failed")
+    error_class = TelegramNetworkError if kind == "network" else TelegramServerError
+    return error_class(method=SendMessage(chat_id=1, text="x"), message=f"{method} failed")
 
 
 class FakeBot:
@@ -74,13 +76,14 @@ class FakeBot:
     def __init__(self) -> None:
         self.calls: list[tuple[str, dict, int | None]] = []
         self.failures: dict[str, int] = {}
+        self.failure_kind = "server"
         self._next_id = 1000
 
     async def _call(self, method: str, kwargs: dict):
         if self.failures.get(method, 0) > 0:
             self.failures[method] -= 1
             self.calls.append((method, kwargs, None))
-            raise telegram_error(method)
+            raise telegram_error(method, self.failure_kind)
         self._next_id += 1
         self.calls.append((method, kwargs, self._next_id))
         return SimpleNamespace(message_id=self._next_id)

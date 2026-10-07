@@ -28,6 +28,8 @@ from contentbot.scheduling import next_free_slot, when_label
 
 log = logging.getLogger(__name__)
 
+UPLOAD_TIMEOUT_S = 300  # seconds; a 49 MB upload can take longer than aiogram's 60 s default
+
 SOUND_ACTIONS = {
     "orig": AudioMode.ORIGINAL,
     "mute": AudioMode.MUTE,
@@ -86,6 +88,7 @@ class ReviewService:
             caption=self.preview_caption(v),
             reply_markup=review_keyboard(v),
             supports_streaming=True,
+            request_timeout=UPLOAD_TIMEOUT_S,
         )
         self.db.update_video(
             video_id, status=Status.IN_REVIEW, review_message_id=message.message_id, review_sent_at=self.clock()
@@ -119,19 +122,28 @@ class ReviewService:
             except MediaError as exc:
                 log.warning("Sound change failed for video %s: %s", video_id, exc)
                 return Outcome.FAILED
+            previous = {"audio_mode": v.audio_mode, "music_track_id": v.music_track_id, "rendered_path": v.rendered_path}
             old_render = v.rendered_path
             self.db.update_video(
                 v.id, audio_mode=mode.value, music_track_id=track.id if track else None, rendered_path=str(dest)
             )
+            v = self._get(v.id)
+            try:
+                await self.bot.edit_message_media(
+                    chat_id=self.chat_id,
+                    message_id=v.review_message_id,
+                    media=InputMediaVideo(media=FSInputFile(dest), caption=self.preview_caption(v), supports_streaming=True),
+                    reply_markup=review_keyboard(v),
+                    request_timeout=UPLOAD_TIMEOUT_S,
+                )
+            except TelegramAPIError as exc:
+                # The reviewer still sees the old video, so keep the old version as the one that gets posted.
+                log.warning("Could not show the new sound for video %s: %s", video_id, exc)
+                self.db.update_video(v.id, **previous)
+                dest.unlink(missing_ok=True)
+                return Outcome.FAILED
             if track:
                 self.db.mark_track_used(track.id, self.clock())
-            v = self._get(v.id)
-            await self.bot.edit_message_media(
-                chat_id=self.chat_id,
-                message_id=v.review_message_id,
-                media=InputMediaVideo(media=FSInputFile(dest), caption=self.preview_caption(v), supports_streaming=True),
-                reply_markup=review_keyboard(v),
-            )
             if old_render and old_render not in (v.original_path, str(dest)):
                 Path(old_render).unlink(missing_ok=True)
             return Outcome.OK
@@ -223,7 +235,8 @@ class ReviewService:
             v = self.db.get_video(video_id)
             if v is None or v.status != Status.APPROVED:
                 return Outcome.ALREADY
-            self.db.update_video(v.id, status=Status.IN_REVIEW, slot_at=None)
+            # Restart the 48-hour expiry clock, so cancelling an old approval does not expire the video at once.
+            self.db.update_video(v.id, status=Status.IN_REVIEW, slot_at=None, review_sent_at=self.clock())
             v = self._get(v.id)
             await self.bot.edit_message_reply_markup(
                 chat_id=self.chat_id, message_id=v.review_message_id, reply_markup=review_keyboard(v)
