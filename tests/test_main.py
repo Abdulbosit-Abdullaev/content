@@ -54,3 +54,20 @@ def test_setup_logging_creates_log_file(tmp_path):
         for handler in root.handlers[:]:
             handler.close()
         root.handlers[:] = saved
+
+
+def test_second_copy_of_the_bot_exits(monkeypatch, capsys):
+    from contentbot.config import SECRET_VARS, load_settings
+    from contentbot.instance_lock import InstanceLock
+    from tests.factories import ROOT
+
+    for var in SECRET_VARS:
+        monkeypatch.setenv(var, "-100123" if var == "REVIEW_CHAT_ID" else "123456:TESTTOKEN")
+    lock = InstanceLock(load_settings(ROOT / "settings.yaml").data_dir / "bot.lock")
+    lock.acquire()
+    try:
+        code = main(["--settings", str(ROOT / "settings.yaml"), "--env", "does-not-exist.env"])
+    finally:
+        lock.release()
+    assert code == 3
+    assert "already running" in capsys.readouterr().err

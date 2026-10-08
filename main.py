@@ -29,6 +29,7 @@ from contentbot.bot.publisher import Publisher
 from contentbot.bot.review import ReviewService, build_review_router
 from contentbot.config import ConfigError, Secrets, Settings, load_secrets, load_settings
 from contentbot.db import Database
+from contentbot.instance_lock import AlreadyRunning, InstanceLock
 from contentbot.models import utc_now
 from contentbot.pipeline.downloader import USER_AGENT, Downloader
 from contentbot.pipeline.media import Media
@@ -178,11 +179,22 @@ def main(argv: list[str] | None = None) -> int:
     except ConfigError as exc:
         print(f"Config error: {exc}", file=sys.stderr)
         return 2
+    lock = None
+    if not args.dry_run:  # a dry run never posts, so it may run next to the real bot
+        lock = InstanceLock(settings.data_dir / "bot.lock")
+        try:
+            lock.acquire()
+        except AlreadyRunning as exc:
+            print(f"Not started: {exc}", file=sys.stderr)
+            return 3
     setup_logging(settings.data_dir / "logs")
     try:
         asyncio.run(run_dry(settings, secrets) if args.dry_run else run_bot(settings, secrets))
     except KeyboardInterrupt:
         pass
+    finally:
+        if lock is not None:
+            lock.release()
     return 0
 
 
