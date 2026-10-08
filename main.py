@@ -13,6 +13,7 @@ import sys
 import tempfile
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from typing import TextIO
 
 import httpx
 from aiogram import Bot, Dispatcher
@@ -54,6 +55,12 @@ def setup_logging(log_dir: Path) -> None:
     root.setLevel(logging.INFO)
     root.handlers[:] = [file_handler, console]
     logging.getLogger("httpx").setLevel(logging.WARNING)
+
+
+def make_console_safe(stream: TextIO) -> None:
+    """Print UTF-8 even when the console uses an old code page (e.g. Windows cp1251)."""
+    if hasattr(stream, "reconfigure"):
+        stream.reconfigure(encoding="utf-8", errors="replace")
 
 
 def make_http() -> httpx.AsyncClient:
@@ -178,6 +185,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--settings", default="settings.yaml")
     parser.add_argument("--env", default=".env")
     args = parser.parse_args(argv)
+    make_console_safe(sys.stdout)
+    make_console_safe(sys.stderr)
     try:
         settings = load_settings(args.settings)
         secrets = load_secrets(args.env)

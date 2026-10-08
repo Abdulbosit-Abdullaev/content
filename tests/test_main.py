@@ -79,3 +79,16 @@ async def test_pipeline_without_anthropic_key_runs_without_ai(tmp_path):
     async with httpx.AsyncClient() as http:
         pipeline = build_pipeline(db, settings, make_secrets(anthropic_api_key=None), http, PrintSink(db))
     assert pipeline.checker is None and pipeline.writer is None
+
+
+def test_console_output_survives_a_non_utf8_windows_console():
+    import io
+
+    from main import make_console_safe
+
+    raw = io.BytesIO()
+    stream = io.TextIOWrapper(raw, encoding="cp1251")
+    make_console_safe(stream)
+    stream.write("Zo'r 🛋 沙发机构\n")
+    stream.flush()
+    assert "沙发机构" in raw.getvalue().decode("utf-8")

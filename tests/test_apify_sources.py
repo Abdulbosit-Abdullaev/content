@@ -115,7 +115,8 @@ def test_pinterest_input_uses_plain_queries():
 
 
 def test_cost_helpers():
-    assert charge_cap(ApifyActor("x", 2.0, 30)) == 0.14
+    assert charge_cap(ApifyActor("x", 2.0, 30)) == 0.50  # Apify refuses caps below $0.50
+    assert charge_cap(ApifyActor("x", 20.0, 30)) == 0.95
     assert estimate_cost(2, TIKTOK_ACTOR) == 0.0034
 
 

@@ -6,6 +6,7 @@ import httpx
 from contentbot.config import ApifyActor
 
 APIFY_BASE = "https://api.apify.com/v2"
+APIFY_MIN_CHARGE_CAP_USD = 0.50  # Apify rejects a lower maxTotalChargeUsd; maxItems still limits the real cost
 
 
 class ApifyError(Exception):
@@ -14,7 +15,7 @@ class ApifyError(Exception):
 
 def charge_cap(actor: ApifyActor) -> float:
     """Hard spending cap for one run: 1.5x the expected cost plus a little for the start fee."""
-    return round(actor.max_results * actor.price_per_1000 / 1000 * 1.5 + 0.05, 2)
+    return max(APIFY_MIN_CHARGE_CAP_USD, round(actor.max_results * actor.price_per_1000 / 1000 * 1.5 + 0.05, 2))
 
 
 def estimate_cost(items: int, actor: ApifyActor) -> float:
