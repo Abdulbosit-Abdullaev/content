@@ -37,6 +37,7 @@ class Settings:
     max_duration_s: float
     min_views: dict[str, int]
     enabled_sources: tuple[str, ...]
+    source_weights: dict[str, int]
     keywords_per_run: int
     youtube_per_keyword: int
     ai_check_limit: int
@@ -141,6 +142,7 @@ def load_settings(path: str | Path) -> Settings:
             max_duration_s=float(raw["duration"]["max_s"]),
             min_views={str(k): int(v) for k, v in raw["min_views"].items()},
             enabled_sources=enabled,
+            source_weights={str(k): max(1, int(v)) for k, v in (raw.get("source_weights") or {}).items()},
             keywords_per_run=int(raw["keywords_per_run"]),
             youtube_per_keyword=int(raw["youtube_per_keyword"]),
             ai_check_limit=int(raw["ai_check_limit"]),

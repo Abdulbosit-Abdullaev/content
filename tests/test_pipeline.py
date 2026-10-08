@@ -302,3 +302,14 @@ async def test_without_ai_platforms_take_turns_and_captions_are_left_to_people(t
     assert sent_ids(db, sink) == ["y1", "p1"]
     assert video_by_pid(db, "y1").caption_body == ""
     assert texts.AI_UNAVAILABLE not in sink.notes
+
+
+async def test_source_weights_give_pinterest_more_of_the_daily_videos(tmp_path):
+    cands = [make_candidate(platform_id=f"y{i}", views=9000 - i) for i in range(3)]
+    cands += [make_candidate(platform="pinterest", platform_id=f"p{i}", views=None) for i in range(3)]
+    pipeline, db, sink, _ = build(
+        tmp_path, [FakeSource("mixed", cands)], None, candidates_per_day=3, source_weights={"pinterest": 2}
+    )
+    pipeline.writer = None
+    await pipeline.run()
+    assert sent_ids(db, sink) == ["y0", "p0", "p1"]

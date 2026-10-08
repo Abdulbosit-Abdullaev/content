@@ -114,3 +114,9 @@ def test_unknown_source_is_a_config_error(tmp_path):
     path.write_text(text, encoding="utf-8")
     with pytest.raises(ConfigError, match="facebook"):
         load_settings(path)
+
+
+def test_pinterest_gets_double_turns_and_more_results():
+    s = load_settings(ROOT / "settings.yaml")
+    assert s.source_weights == {"pinterest": 2}
+    assert s.apify_actors["pinterest"].max_results == 40

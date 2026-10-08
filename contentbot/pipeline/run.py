@@ -115,7 +115,7 @@ class Pipeline:
 
         fresh = [c for c in dedupe(result.candidates) if not self.db.video_exists(c.platform, c.platform_id)]
         passed, dropped = split(fresh, self.rules)
-        ordered = order_for_ai(passed)
+        ordered = order_for_ai(passed, s.source_weights)
         to_check, overflow = ordered[: s.ai_check_limit], ordered[s.ai_check_limit :]
         for c in dropped + overflow:
             self.db.insert_video(c, Status.FILTERED_OUT, now)

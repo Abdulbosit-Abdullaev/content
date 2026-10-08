@@ -47,15 +47,20 @@ def split(candidates: Iterable[Candidate], rules: FilterRules) -> tuple[list[Can
     return passed, dropped
 
 
-def order_for_ai(candidates: list[Candidate]) -> list[Candidate]:
-    """One candidate from each platform in turn; most-viewed first within a platform."""
+def order_for_ai(candidates: list[Candidate], weights: dict[str, int] | None = None) -> list[Candidate]:
+    """Platforms take turns (a platform with weight N takes N per turn); most-viewed first within a platform."""
     by_platform: dict[str, list[Candidate]] = {}
     for c in candidates:
         by_platform.setdefault(c.platform, []).append(c)
-    queues = [sorted(group, key=lambda c: (c.views is None, -(c.views or 0))) for group in by_platform.values()]
+    weights = weights or {}
+    queues = [
+        (max(1, weights.get(platform, 1)), sorted(group, key=lambda c: (c.views is None, -(c.views or 0))))
+        for platform, group in by_platform.items()
+    ]
     ordered: list[Candidate] = []
-    while any(queues):
-        for queue in queues:
-            if queue:
-                ordered.append(queue.pop(0))
+    while any(queue for _, queue in queues):
+        for turns, queue in queues:
+            for _ in range(turns):
+                if queue:
+                    ordered.append(queue.pop(0))
     return ordered

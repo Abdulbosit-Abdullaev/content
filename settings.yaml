@@ -19,6 +19,8 @@ min_views:                   # Pinterest has no view counts
 # Where to search. TikTok is off: tiktok.com is blocked in Uzbekistan, so the server
 # cannot download its videos. Add "tiktok" back if the bot ever runs on a server abroad.
 enabled_sources: [youtube, instagram, pinterest]
+source_weights:              # turns per round when picking videos (default 1): Pinterest gets about half
+  pinterest: 2
 
 keywords_per_run: 6          # keywords used by each search (rotating)
 youtube_per_keyword: 5       # YouTube results per keyword
@@ -42,7 +44,7 @@ apify:
     pinterest:
       actor_id: cirkit/pinterest-pins-scraper
       price_per_1000: 2.00
-      max_results: 30
+      max_results: 40
 
 ytdlp_cookies_file: null     # path to a cookies.txt if YouTube blocks the server
 ffmpeg_path: ffmpeg

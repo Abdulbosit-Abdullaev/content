@@ -43,3 +43,10 @@ def test_order_for_ai_interleaves_platforms():
     pin = [make_candidate(platform="pinterest", platform_id=f"p{i}", views=None) for i in range(2)]
     ordered = order_for_ai(yt + pin)
     assert [c.platform_id for c in ordered] == ["y1", "p0", "y2", "p1", "y0"]
+
+
+def test_order_for_ai_gives_weighted_platforms_more_turns():
+    yt = [make_candidate(platform="youtube", platform_id=f"y{i}", views=1000 - i) for i in range(3)]
+    pin = [make_candidate(platform="pinterest", platform_id=f"p{i}", views=None) for i in range(4)]
+    ordered = order_for_ai(yt + pin, {"pinterest": 2})
+    assert [c.platform_id for c in ordered] == ["y0", "p0", "p1", "y1", "p2", "p3", "y2"]
