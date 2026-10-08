@@ -64,17 +64,20 @@ def test_setup_logging_creates_log_file(tmp_path):
         root.handlers[:] = saved
 
 
-def test_second_copy_of_the_bot_exits(monkeypatch, capsys):
-    from contentbot.config import SECRET_VARS, load_settings
+def test_second_copy_of_the_bot_exits(monkeypatch, capsys, tmp_path):
+    from contentbot.config import SECRET_VARS
     from contentbot.instance_lock import InstanceLock
     from tests.factories import ROOT
 
+    # A private copy of settings.yaml, so data/ (and the lock) live in tmp_path, not in the real project.
+    settings_file = tmp_path / "settings.yaml"
+    settings_file.write_text((ROOT / "settings.yaml").read_text(encoding="utf-8"), encoding="utf-8")
     for var in SECRET_VARS:
         monkeypatch.setenv(var, "-100123" if var == "REVIEW_CHAT_ID" else "123456:TESTTOKEN")
-    lock = InstanceLock(load_settings(ROOT / "settings.yaml").data_dir / "bot.lock")
+    lock = InstanceLock(tmp_path / "data" / "bot.lock")
     lock.acquire()
     try:
-        code = main(["--settings", str(ROOT / "settings.yaml"), "--env", "does-not-exist.env"])
+        code = main(["--settings", str(settings_file), "--env", "does-not-exist.env"])
     finally:
         lock.release()
     assert code == 3

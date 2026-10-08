@@ -33,7 +33,7 @@ The bot finds short videos about **soft furniture** on the internet every day. I
 | AI | **Claude** checks relevance and writes caption drafts. Default model `claude-opus-5-5`; can be switched to `claude-sonnet-5-5` in settings. **Optional** (owner, 2026-10-08): with no `ANTHROPIC_API_KEY` the bot runs without AI. Platforms take turns, each platform's most-viewed video first, and reviewers write every caption. |
 | Topic | Anything related to soft furniture: Evim's materials, plus upholstery work, workshops, finished sofas and chairs, mechanisms in action |
 | Max length | **120 seconds** (minimum 5 s) |
-| Search languages | English, Russian, Turkish, Uzbek, Chinese |
+| Search languages | English, Russian, Turkish, Chinese. Uzbek was removed on 2026-10-08 (owner): it mostly found local shop ads with prices and phone numbers. Keywords are product and mechanism searches, e.g. "hydraulic bed lift mechanism", "electric recliner sofa". |
 | Sound options | 🔊 Original · 🔇 No sound · 🎵 Calm music (replaces the original) |
 | Caption | AI draft + reviewer edits. Footer (phones, address, hours, links) added automatically |
 | Caption script | **Uzbek Latin**, matching the existing channel posts |

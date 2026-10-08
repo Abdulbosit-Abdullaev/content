@@ -85,45 +85,40 @@ caption_examples:
 
     Haqiqiy nafislik na'munasi!
 
-seed_keywords:
+seed_keywords:              # product and mechanism searches; no Uzbek (it finds local shop ads)
   en:
-    - sofa mechanism
     - sofa bed mechanism
+    - hydraulic bed lift mechanism
+    - electric recliner sofa
     - recliner mechanism
-    - upholstery
-    - sofa upholstery
-    - furniture foam
+    - transforming sofa
+    - multifunctional sofa bed
+    - sofa headrest mechanism
+    - upholstery foam cutting
     - upholstery fabric
     - sofa legs
-    - furniture legs
-    - "#upholstery"
     - "#sofabed"
-    - "#upholsterywork"
+    - "#upholstery"
   ru:
-    - перетяжка дивана
     - механизм дивана
-    - механизм еврокнижка
+    - механизм трансформации дивана
+    - подъемный механизм кровати
+    - диван реклайнер
+    - перетяжка дивана
     - поролон для мебели
     - мебельная ткань
-    - ножки для дивана
-    - обивка мебели
-    - "#перетяжкамебели"
+    - "#механизмдивана"
   tr:
-    - koltuk döşeme
     - kanepe mekanizması
-    - mobilya ayağı
-    - döşemelik kumaş
-    - mobilya süngeri
-    - "#döşeme"
-  uz:
-    - mebel oyoqlari
-    - yumshoq mebel
-    - divan ishlab chiqarish
-    - "#mebel"
+    - yataklı kanepe mekanizması
+    - baza mekanizması
+    - relax koltuk mekanizması
+    - koltuk döşeme
+    - "#koltukdöşeme"
   zh:
     - 沙发机构
-    - 沙发面料
+    - 功能沙发
+    - 电动沙发
+    - 沙发床机构
+    - 液压床
     - 沙发海绵
-    - 沙发脚
-    - 沙发制作
-    - 软包

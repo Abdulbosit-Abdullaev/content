@@ -26,7 +26,8 @@ def test_real_settings_file_loads():
     assert s.ai_model == "claude-opus-5-5"
     assert set(s.apify_actors) == {"tiktok", "instagram", "pinterest"}
     assert s.apify_actors["tiktok"].actor_id == "clockworks/tiktok-scraper"
-    assert set(s.seed_keywords) == {"en", "ru", "tr", "uz", "zh"}
+    assert set(s.seed_keywords) == {"en", "ru", "tr", "zh"}  # no Uzbek: it finds local shop ads
+    assert "electric recliner sofa" in s.seed_keywords["en"]
     assert len(s.caption_examples) == 6
     assert s.data_dir == (ROOT / "data").resolve()
 
