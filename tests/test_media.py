@@ -83,3 +83,10 @@ async def test_too_large_even_after_compression_raises(tmp_path):
     with pytest.raises(MediaError, match="too large"):
         await Media(max_bytes=1000).render(clip, AudioMode.ORIGINAL, tmp_path / "o.mp4")
     assert not (tmp_path / "o.mp4").exists()
+
+
+async def test_stuck_ffmpeg_is_stopped():
+    import sys
+
+    with pytest.raises(MediaError, match="timed out"):
+        await Media(timeout_s=0.5)._run([sys.executable, "-c", "import time; time.sleep(30)"])

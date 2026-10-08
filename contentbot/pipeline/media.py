@@ -9,6 +9,7 @@ from pathlib import Path
 from contentbot.models import AudioMode
 
 TELEGRAM_MAX_BYTES = 49 * 1024 * 1024
+FFMPEG_TIMEOUT_S = 300
 SCALE_FILTER = r"scale=w=trunc(min(1080\,iw)/2)*2:h=-2"
 AAC_ARGS = ["-c:a", "aac", "-b:a", "128k", "-ar", "44100"]
 
@@ -81,10 +82,17 @@ def build_render_args(
 
 
 class Media:
-    def __init__(self, ffmpeg: str = "ffmpeg", ffprobe: str = "ffprobe", max_bytes: int = TELEGRAM_MAX_BYTES) -> None:
+    def __init__(
+        self,
+        ffmpeg: str = "ffmpeg",
+        ffprobe: str = "ffprobe",
+        max_bytes: int = TELEGRAM_MAX_BYTES,
+        timeout_s: float = FFMPEG_TIMEOUT_S,
+    ) -> None:
         self.ffmpeg = ffmpeg
         self.ffprobe = ffprobe
         self.max_bytes = max_bytes
+        self.timeout_s = timeout_s
 
     async def probe(self, path: Path) -> ProbeInfo:
         out = await self._run(
@@ -135,7 +143,13 @@ class Media:
             )
         except FileNotFoundError as exc:
             raise MediaError(f"{args[0]} not found; install ffmpeg") from exc
-        out, err = await proc.communicate()
+        try:
+            out, err = await asyncio.wait_for(proc.communicate(), timeout=self.timeout_s)
+        except TimeoutError:
+            # A stuck ffmpeg would otherwise hold the daily search lock forever.
+            proc.kill()
+            await proc.wait()
+            raise MediaError(f"{Path(args[0]).name} timed out after {self.timeout_s:g} s") from None
         if proc.returncode != 0:
             raise MediaError(f"{Path(args[0]).name} failed: {err.decode(errors='replace')[-500:]}")
         return out.decode(errors="replace")
