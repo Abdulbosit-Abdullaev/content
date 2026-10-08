@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from aiogram import F, Router
-from aiogram.exceptions import TelegramAPIError
+from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram.types import CallbackQuery, ForceReply, FSInputFile, InputMediaVideo, Message, ReplyParameters
 
 from contentbot import texts
@@ -306,6 +306,15 @@ class ReviewService:
             log.warning("Telegram call failed: %s", exc)
 
 
+async def answer_quietly(query: CallbackQuery, text: str | None = None, **kwargs: Any) -> None:
+    """Answer a button press. Telegram refuses answers to old presses (e.g. after the computer slept);
+    that only loses the small pop-up, so it must never stop the action itself."""
+    try:
+        await query.answer(text, **kwargs)
+    except TelegramBadRequest as exc:
+        log.info("Could not answer a button press: %s", exc)
+
+
 def build_review_router(service: ReviewService, chat_id: int) -> Router:
     router = Router(name="review")
     router.message.filter(F.chat.id == chat_id)
@@ -315,13 +324,13 @@ def build_review_router(service: ReviewService, chat_id: int) -> Router:
     async def on_video_button(query: CallbackQuery, callback_data: VideoCb) -> None:
         action, video_id = callback_data.action, callback_data.vid
         if action == NOOP:
-            await query.answer()
+            await answer_quietly(query)
             return
         if action in SOUND_ACTIONS:
             if SOUND_ACTIONS[action] is AudioMode.MUSIC and not service.has_music():
-                await query.answer(texts.MUSIC_EMPTY, show_alert=True)
+                await answer_quietly(query, texts.MUSIC_EMPTY, show_alert=True)
                 return
-            await query.answer(texts.RENDERING)
+            await answer_quietly(query, texts.RENDERING)
             outcome = await service.set_sound(video_id, action)
             if outcome in (Outcome.FAILED, Outcome.MUSIC_EMPTY):
                 await service.notify(TOASTS[outcome])
@@ -334,11 +343,11 @@ def build_review_router(service: ReviewService, chat_id: int) -> Router:
         }
         handler = handlers.get(action)
         if handler is None:
-            await query.answer()
+            await answer_quietly(query)
             return
         outcome = await handler(video_id)
         toast = texts.APPROVED_TOAST if action == "ok" and outcome is Outcome.OK else TOASTS.get(outcome)
-        await query.answer(toast)
+        await answer_quietly(query, toast)
 
     @router.message(F.reply_to_message, F.text)
     async def on_reply(message: Message) -> None:

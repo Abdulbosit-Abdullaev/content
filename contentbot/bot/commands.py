@@ -16,6 +16,7 @@ from aiogram.types import CallbackQuery, Message
 
 from contentbot import texts
 from contentbot.bot.keyboards import MusicCb, music_ask_keyboard
+from contentbot.bot.review import answer_quietly
 from contentbot.config import Secrets, Settings
 from contentbot.db import MUSIC_SUFFIXES, Database
 from contentbot.models import Status, utc_now
@@ -209,6 +210,6 @@ def build_commands_router(service: CommandService, chat_id: int) -> Router:
         else:
             service.forget_audio(callback_data.msg)
             await query.message.delete()
-        await query.answer()
+        await answer_quietly(query)
 
     return router

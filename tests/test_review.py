@@ -219,3 +219,36 @@ async def test_without_ai_the_preview_asks_for_a_caption(env):
     env.service.ai_enabled = False
     await sent_video(env, body="")
     assert env.bot.named("send_video")[0]["caption"].startswith(texts.WRITE_CAPTION_BODY)
+
+
+async def test_a_late_button_press_still_changes_the_sound():
+    """After the computer sleeps, Telegram refuses the answer to an old press; the action must still happen."""
+    from aiogram.exceptions import TelegramBadRequest
+    from aiogram.methods import AnswerCallbackQuery
+
+    from contentbot.bot.keyboards import VideoCb
+    from contentbot.bot.review import build_review_router
+
+    calls = []
+
+    class Service:
+        def has_music(self):
+            return True
+
+        async def set_sound(self, video_id, action):
+            calls.append((video_id, action))
+            return Outcome.OK
+
+        async def notify(self, text):
+            calls.append(text)
+
+    class OldQuery:
+        async def answer(self, *args, **kwargs):
+            raise TelegramBadRequest(
+                method=AnswerCallbackQuery(callback_query_id="1"),
+                message="Bad Request: query is too old and response timeout expired or query ID is invalid",
+            )
+
+    handler = build_review_router(Service(), chat_id=-100111).callback_query.handlers[0].callback
+    await handler(OldQuery(), VideoCb(action="mute", vid=5))
+    assert calls == [(5, "mute")]
