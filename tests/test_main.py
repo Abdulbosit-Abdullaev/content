@@ -23,8 +23,16 @@ async def test_build_pipeline_wires_all_sources(tmp_path):
     db = Database(":memory:")
     async with httpx.AsyncClient() as http:
         pipeline = build_pipeline(db, settings, make_secrets(), http, PrintSink(db))
-    assert [s.name for s in pipeline.sources] == ["youtube", "tiktok", "instagram", "pinterest"]
+    assert [s.name for s in pipeline.sources] == ["youtube", "instagram", "pinterest"]
     assert pipeline.dry_run is False
+
+
+async def test_tiktok_can_be_switched_back_on(tmp_path):
+    settings = make_settings(tmp_path, enabled_sources=("youtube", "tiktok", "instagram", "pinterest"))
+    db = Database(":memory:")
+    async with httpx.AsyncClient() as http:
+        pipeline = build_pipeline(db, settings, make_secrets(), http, PrintSink(db))
+    assert [s.name for s in pipeline.sources] == ["youtube", "tiktok", "instagram", "pinterest"]
 
 
 async def test_routers_attach_to_a_dispatcher(tmp_path):

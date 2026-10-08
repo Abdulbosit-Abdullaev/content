@@ -11,6 +11,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import yaml
 from dotenv import load_dotenv
 
+from contentbot.models import PLATFORMS
+
 
 class ConfigError(Exception):
     """settings.yaml or .env is missing something or has a bad value."""
@@ -34,6 +36,7 @@ class Settings:
     min_duration_s: float
     max_duration_s: float
     min_views: dict[str, int]
+    enabled_sources: tuple[str, ...]
     keywords_per_run: int
     youtube_per_keyword: int
     ai_check_limit: int
@@ -120,6 +123,13 @@ def load_settings(path: str | Path) -> Settings:
             )
             for name, actor in raw["apify"]["actors"].items()
         }
+        enabled = tuple(str(x) for x in raw.get("enabled_sources", PLATFORMS))
+        unknown = [name for name in enabled if name not in PLATFORMS]
+        if unknown:
+            raise ConfigError(f"Unknown source in enabled_sources: {', '.join(unknown)} (allowed: {', '.join(PLATFORMS)})")
+        no_actor = [name for name in enabled if name != "youtube" and name not in actors]
+        if no_actor:
+            raise ConfigError(f"No apify actor settings for: {', '.join(no_actor)}")
         return Settings(
             timezone=ZoneInfo(str(raw["timezone"])),
             search_time=parse_hhmm(raw["search_time"]),
@@ -130,6 +140,7 @@ def load_settings(path: str | Path) -> Settings:
             min_duration_s=float(raw["duration"]["min_s"]),
             max_duration_s=float(raw["duration"]["max_s"]),
             min_views={str(k): int(v) for k, v in raw["min_views"].items()},
+            enabled_sources=enabled,
             keywords_per_run=int(raw["keywords_per_run"]),
             youtube_per_keyword=int(raw["youtube_per_keyword"]),
             ai_check_limit=int(raw["ai_check_limit"]),

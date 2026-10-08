@@ -70,12 +70,13 @@ def make_http() -> httpx.AsyncClient:
 def build_sources(http: httpx.AsyncClient, settings: Settings, secrets: Secrets) -> list:
     runner = ApifyRunner(http, secrets.apify_token)
     actors = settings.apify_actors
-    return [
-        YouTubeSource(http, secrets.youtube_api_key, settings.youtube_per_keyword),
-        TikTokSource(runner, actors["tiktok"]),
-        InstagramSource(runner, actors["instagram"]),
-        PinterestSource(runner, actors["pinterest"]),
-    ]
+    makers = {
+        "youtube": lambda: YouTubeSource(http, secrets.youtube_api_key, settings.youtube_per_keyword),
+        "tiktok": lambda: TikTokSource(runner, actors["tiktok"]),
+        "instagram": lambda: InstagramSource(runner, actors["instagram"]),
+        "pinterest": lambda: PinterestSource(runner, actors["pinterest"]),
+    }
+    return [makers[name]() for name in settings.enabled_sources]
 
 
 def build_pipeline(

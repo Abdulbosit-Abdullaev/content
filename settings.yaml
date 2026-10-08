@@ -16,6 +16,10 @@ min_views:                   # Pinterest has no view counts
   tiktok: 2000
   instagram: 1000
 
+# Where to search. TikTok is off: tiktok.com is blocked in Uzbekistan, so the server
+# cannot download its videos. Add "tiktok" back if the bot ever runs on a server abroad.
+enabled_sources: [youtube, instagram, pinterest]
+
 keywords_per_run: 6          # keywords used by each search (rotating)
 youtube_per_keyword: 5       # YouTube results per keyword
 ai_check_limit: 30           # candidates sent to the AI check per run

@@ -29,6 +29,7 @@ The bot finds short videos about **soft furniture** on the internet every day. I
 |---|---|
 | Video sources | YouTube Shorts (official API, free) + TikTok, Instagram Reels, Pinterest via **Apify** (start on the free $5/month plan, upgrade to $29 only if needed) |
 | Not included | WeChat, Douyin (closed outside China), Facebook (no public video search) |
+| TikTok | **Off** (owner, 2026-10-08): tiktok.com is blocked in Uzbekistan, where the server runs, so videos cannot be downloaded. `enabled_sources` in `settings.yaml` turns it back on. |
 | AI | **Claude** checks relevance and writes caption drafts. Default model `claude-opus-5-5`; can be switched to `claude-sonnet-5-5` in settings. **Optional** (owner, 2026-10-08): with no `ANTHROPIC_API_KEY` the bot runs without AI. Platforms take turns, each platform's most-viewed video first, and reviewers write every caption. |
 | Topic | Anything related to soft furniture: Evim's materials, plus upholstery work, workshops, finished sofas and chairs, mechanisms in action |
 | Max length | **120 seconds** (minimum 5 s) |

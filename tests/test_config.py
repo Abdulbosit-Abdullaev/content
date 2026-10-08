@@ -99,3 +99,17 @@ def test_anthropic_key_is_optional(monkeypatch):
     for key, value in values.items():
         monkeypatch.setenv(key, value)
     assert load_secrets(None).anthropic_api_key is None
+
+
+def test_tiktok_is_off_because_it_is_blocked_in_uzbekistan():
+    assert load_settings(ROOT / "settings.yaml").enabled_sources == ("youtube", "instagram", "pinterest")
+
+
+def test_unknown_source_is_a_config_error(tmp_path):
+    text = (ROOT / "settings.yaml").read_text(encoding="utf-8").replace(
+        "enabled_sources: [youtube, instagram, pinterest]", "enabled_sources: [youtube, facebook]"
+    )
+    path = tmp_path / "settings.yaml"
+    path.write_text(text, encoding="utf-8")
+    with pytest.raises(ConfigError, match="facebook"):
+        load_settings(path)

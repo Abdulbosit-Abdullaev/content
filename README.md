@@ -1,6 +1,6 @@
 # Evim content bot
 
-Every morning the bot finds short soft-furniture videos (YouTube Shorts, TikTok, Instagram Reels, Pinterest), checks them with Claude AI, writes an Uzbek caption draft and sends 8 of them to your private review group. There you choose the sound, edit the caption and approve. Approved videos are posted to the channel at 10:00, 13:00, 16:00 and 19:00 (Tashkent time).
+Every morning the bot finds short soft-furniture videos (YouTube Shorts, Instagram Reels, Pinterest; TikTok is off because it is blocked in Uzbekistan, see `enabled_sources` in `settings.yaml`), checks them with Claude AI, writes an Uzbek caption draft and sends 8 of them to your private review group. There you choose the sound, edit the caption and approve. Approved videos are posted to the channel at 10:00, 13:00, 16:00 and 19:00 (Tashkent time).
 
 All settings (times, counts, keywords, footer, AI model) are in `settings.yaml`. All bot texts are in `contentbot/texts.py`.
 
