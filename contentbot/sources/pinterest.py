@@ -8,8 +8,10 @@ from contentbot.sources.base import SourceResult, as_query, parse_all, parse_dat
 
 
 def parse_pinterest_item(item: dict) -> Candidate | None:
+    # In real actor output isVideo and videoUrl often disagree, so either one marks a video pin.
+    # Without a direct link, the downloader falls back to yt-dlp on the pin page.
     video_url = to_url(item.get("videoUrl"))
-    if not item.get("isVideo") or not video_url:
+    if not video_url and item.get("isVideo") is not True:
         return None
     pin_id = item.get("id")
     page_url = to_url(item.get("url"))

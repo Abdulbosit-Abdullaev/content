@@ -156,5 +156,17 @@ def test_odd_url_fields_are_dropped_not_crashing():
     assert instagram.media_url is None and instagram.thumbnail_url is None
     pinterest = parse_pinterest_item({**PINTEREST_ITEM, "imageUrl": {"orig": "https://x"}})
     assert pinterest.thumbnail_url is None
-    assert parse_pinterest_item({**PINTEREST_ITEM, "videoUrl": {"720p": "https://x"}}) is None
+    assert parse_pinterest_item({**PINTEREST_ITEM, "videoUrl": {"720p": "https://x"}}).media_url is None
+    assert parse_pinterest_item({**PINTEREST_ITEM, "isVideo": False, "videoUrl": {"720p": "https://x"}}) is None
     assert parse_tiktok_item({**TIKTOK_ITEM, "webVideoUrl": ["https://x"]}) is None
+
+
+def test_pinterest_video_link_counts_even_when_flag_says_no():
+    # Real actor output: video pins often come with isVideo=False but a videoUrl.
+    c = parse_pinterest_item({**PINTEREST_ITEM, "isVideo": False})
+    assert c is not None and c.media_url.endswith(".mp4")
+
+
+def test_pinterest_video_flag_without_link_downloads_from_the_pin_page():
+    c = parse_pinterest_item({**PINTEREST_ITEM, "isVideo": True, "videoUrl": None})
+    assert c is not None and c.media_url is None and c.url.endswith("/pin/424605071130957254/")
