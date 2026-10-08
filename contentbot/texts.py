@@ -42,6 +42,10 @@ AI_UNAVAILABLE = "⚠️ AI ishlamadi: videolar ko'rishlar soni bo'yicha tanland
 RUN_FAILED = "⚠️ Qidiruvda xatolik yuz berdi, loglarni tekshiring"
 APIFY_BUDGET = "⚠️ Apify oylik limiti tugadi. TikTok, Instagram va Pinterest keyingi oygacha to'xtatildi"
 POST_FAILED = "⚠️ Kanalga joylab bo'lmadi. Keyingi urinish: {when}"
+POST_UNCERTAIN = (
+    "⚠️ Kanalga joylashda aloqa uzildi. Video kanalga chiqqanini tekshiring: "
+    "chiqmagan bo'lsa, qaytadan tasdiqlang."
+)
 
 # Commands
 SEARCH_STARTED = "🔎 Qidiruv boshlandi"

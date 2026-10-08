@@ -20,12 +20,15 @@ def env(tmp_path):
     db = Database(":memory:")
     bot = FakeBot()
     sleeps = []
+    during_pause = []  # callables run while the publisher waits between attempts
 
     async def fake_sleep(seconds):
         sleeps.append(seconds)
+        for action in during_pause:
+            action()
 
     publisher = Publisher(bot, db, settings, make_secrets(), clock=lambda: NOW, retry_delays=(1, 2, 4), sleep=fake_sleep)
-    yield SimpleNamespace(settings=settings, db=db, bot=bot, publisher=publisher, sleeps=sleeps)
+    yield SimpleNamespace(settings=settings, db=db, bot=bot, publisher=publisher, sleeps=sleeps, during_pause=during_pause)
     db.close()
 
 
@@ -98,3 +101,32 @@ async def test_replan_missed_slots_after_downtime(env):
     assert await env.publisher.replan_missed(morning) == 2
     assert env.db.get_video(first).slot_at == datetime(2026, 10, 7, 5, 0, tzinfo=UTC)  # 10:00
     assert env.db.get_video(second).slot_at == datetime(2026, 10, 7, 8, 0, tzinfo=UTC)  # 13:00
+
+
+async def test_cancel_during_retry_pause_is_not_posted(env):
+    video_id = approved(env, "a", NOW)
+    env.bot.failures["send_video"] = 1
+    env.during_pause.append(lambda: env.db.update_video(video_id, status=Status.IN_REVIEW, slot_at=None))
+    assert await env.publisher.publish_due() == 0
+    assert len(env.bot.named("send_video")) == 1
+    assert env.db.get_video(video_id).status is Status.IN_REVIEW
+
+
+async def test_dropped_connection_is_not_retried_and_goes_back_to_review(env):
+    video_id = approved(env, "a", NOW)
+    env.bot.failure_kind = "network"
+    env.bot.failures["send_video"] = 1
+    assert await env.publisher.publish_due() == 0
+    assert len(env.bot.named("send_video")) == 1
+    assert env.sleeps == []
+    v = env.db.get_video(video_id)
+    assert v.status is Status.IN_REVIEW and v.slot_at is None and v.review_sent_at == NOW
+    assert texts.POST_UNCERTAIN in [kw["text"] for kw in env.bot.named("send_message")]
+    buttons = env.bot.named("edit_message_reply_markup")[-1]["reply_markup"].inline_keyboard
+    assert buttons[2][0].text == texts.BTN_APPROVE
+
+
+async def test_channel_upload_gets_a_long_timeout(env):
+    approved(env, "a", NOW)
+    await env.publisher.publish_due()
+    assert env.bot.named("send_video")[0]["request_timeout"] == 300

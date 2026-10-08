@@ -8,11 +8,12 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from aiogram.exceptions import TelegramAPIError
-from aiogram.types import FSInputFile
+from aiogram.exceptions import TelegramAPIError, TelegramNetworkError
+from aiogram.types import FSInputFile, ReplyParameters
 
 from contentbot import texts
-from contentbot.bot.keyboards import approved_keyboard, post_link, posted_keyboard
+from contentbot.bot.keyboards import approved_keyboard, post_link, posted_keyboard, review_keyboard
+from contentbot.bot.review import UPLOAD_TIMEOUT_S
 from contentbot.config import Secrets, Settings
 from contentbot.db import Database, VideoRow
 from contentbot.models import Status, utc_now
@@ -63,19 +64,30 @@ class Publisher:
         return moved
 
     async def _post(self, video: VideoRow) -> bool:
-        caption = build_caption(video.caption_body, self.settings.footer)
         attempts = len(self.retry_delays) + 1
         last_error: Exception | None = None
         message = None
         for attempt in range(attempts):
+            # Re-read every attempt: a reviewer may cancel or change the video while we wait between attempts.
+            current = self.db.get_video(video.id)
+            if current is None or current.status != Status.APPROVED or current.slot_at != video.slot_at:
+                log.info("Video %s changed while waiting to post; not posting it", video.id)
+                return False
+            video = current
             try:
                 message = await self.bot.send_video(
                     chat_id=self.channel_id,
                     video=FSInputFile(video.rendered_path),
-                    caption=caption,
+                    caption=build_caption(video.caption_body, self.settings.footer),
                     supports_streaming=True,
+                    request_timeout=UPLOAD_TIMEOUT_S,
                 )
                 break
+            except TelegramNetworkError as exc:
+                # The upload may have reached the channel even though the reply was lost.
+                # Retrying could post it twice, so a person decides instead.
+                await self._back_to_review(video, exc)
+                return False
             except (TelegramAPIError, OSError) as exc:
                 last_error = exc
                 log.warning("Posting video %s failed (attempt %s/%s): %s", video.id, attempt + 1, attempts, exc)
@@ -106,6 +118,23 @@ class Publisher:
             if path:
                 Path(path).unlink(missing_ok=True)
         return True
+
+    async def _back_to_review(self, video: VideoRow, error: Exception) -> None:
+        log.warning("Posting video %s may or may not have reached the channel: %s", video.id, error)
+        self.db.update_video(
+            video.id, status=Status.IN_REVIEW, slot_at=None, review_sent_at=self.clock(), error=str(error)[:300]
+        )
+        reply_to = ReplyParameters(message_id=video.review_message_id) if video.review_message_id else None
+        await self._safe(
+            self.bot.send_message(chat_id=self.review_chat_id, text=texts.POST_UNCERTAIN, reply_parameters=reply_to)
+        )
+        updated = self.db.get_video(video.id)
+        if updated.review_message_id is not None:
+            await self._safe(
+                self.bot.edit_message_reply_markup(
+                    chat_id=self.review_chat_id, message_id=updated.review_message_id, reply_markup=review_keyboard(updated)
+                )
+            )
 
     def _next_slot(self, now: datetime, exclude: datetime | None) -> datetime:
         taken = [slot for slot in self.db.approved_slots() if slot != exclude]
