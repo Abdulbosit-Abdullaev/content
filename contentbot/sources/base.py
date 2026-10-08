@@ -1,13 +1,16 @@
 """What every video source returns, plus forgiving parsing helpers for scraped data."""
 from __future__ import annotations
 
-from collections.abc import Iterable
+import logging
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from typing import Any, Protocol
 
 from contentbot.models import Candidate, Keyword
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -40,6 +43,28 @@ def unique(items: Iterable[str]) -> list[str]:
             seen.add(item)
             out.append(item)
     return out
+
+
+def to_url(value: Any) -> str | None:
+    """A web link as a string, or None for anything else (lists, objects, other schemes)."""
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    return value if value.startswith(("http://", "https://")) else None
+
+
+def parse_all(parser: Callable[[Any], Candidate | None], items: Iterable[Any]) -> list[Candidate]:
+    """Parse every item; one malformed item is skipped instead of sinking the whole source."""
+    candidates: list[Candidate] = []
+    for item in items:
+        try:
+            candidate = parser(item)
+        except Exception as exc:  # scraped data can have any shape
+            log.info("Skipping malformed item: %r", exc)
+            continue
+        if candidate:
+            candidates.append(candidate)
+    return candidates
 
 
 def as_dict(value: Any) -> dict:

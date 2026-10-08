@@ -146,3 +146,14 @@ async def test_source_search_estimates_cost(respx_mock):
         result = await TikTokSource(ApifyRunner(http, "T"), TIKTOK_ACTOR).search([Keyword(1, "sofa", "en", "query")])
     assert len(result.candidates) == 1
     assert result.cost_usd == 0.0034
+
+
+def test_odd_url_fields_are_dropped_not_crashing():
+    tiktok = parse_tiktok_item({**TIKTOK_ITEM, "videoMeta": {"duration": 21, "coverUrl": ["https://a", "https://b"]}})
+    assert tiktok.thumbnail_url is None
+    instagram = parse_instagram_item({**INSTAGRAM_ITEM, "videoUrl": ["https://x"], "displayUrl": {"src": "y"}})
+    assert instagram.media_url is None and instagram.thumbnail_url is None
+    pinterest = parse_pinterest_item({**PINTEREST_ITEM, "imageUrl": {"orig": "https://x"}})
+    assert pinterest.thumbnail_url is None
+    assert parse_pinterest_item({**PINTEREST_ITEM, "videoUrl": {"720p": "https://x"}}) is None
+    assert parse_tiktok_item({**TIKTOK_ITEM, "webVideoUrl": ["https://x"]}) is None

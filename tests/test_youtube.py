@@ -70,3 +70,8 @@ async def test_quota_error_raises(respx_mock):
     async with httpx.AsyncClient() as http:
         with pytest.raises(httpx.HTTPStatusError):
             await YouTubeSource(http, "KEY").search([Keyword(1, "sofa", "en", "query")])
+
+
+def test_parse_video_item_tolerates_odd_thumbnails():
+    item = {"id": "z9", "snippet": {"thumbnails": {"high": "not-an-object", "medium": {"url": ["x"]}}}}
+    assert parse_video_item(item).thumbnail_url is None

@@ -29,3 +29,24 @@ def test_datetime_formats():
     assert parse_datetime("2026-09-30T08:00:00").tzinfo is UTC
     assert parse_datetime("garbage") is None
     assert parse_datetime(None) is None
+
+
+def test_to_url_accepts_only_web_links():
+    from contentbot.sources.base import to_url
+
+    assert to_url(" https://cdn.example/v.mp4 ") == "https://cdn.example/v.mp4"
+    assert to_url(["https://cdn.example/v.mp4"]) is None
+    assert to_url({"url": "https://x"}) is None
+    assert to_url("javascript:alert(1)") is None
+    assert to_url(None) is None
+
+
+def test_parse_all_skips_items_that_crash_the_parser():
+    from contentbot.sources.base import parse_all
+
+    def parser(item):
+        if item == "bad":
+            raise TypeError("odd field")
+        return item
+
+    assert parse_all(parser, ["a", "bad", None, "b"]) == ["a", "b"]

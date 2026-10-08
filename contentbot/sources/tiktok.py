@@ -4,21 +4,32 @@ from __future__ import annotations
 from contentbot.config import ApifyActor
 from contentbot.models import Candidate, Keyword
 from contentbot.sources.apify import ApifyRunner, charge_cap, estimate_cost
-from contentbot.sources.base import SourceResult, as_dict, as_hashtag, as_query, parse_datetime, to_float, to_int, unique
+from contentbot.sources.base import (
+    SourceResult,
+    as_dict,
+    as_hashtag,
+    as_query,
+    parse_all,
+    parse_datetime,
+    to_float,
+    to_int,
+    to_url,
+    unique,
+)
 
 
 def parse_tiktok_item(item: dict) -> Candidate | None:
     video_id = item.get("id")
-    url = item.get("webVideoUrl")
+    url = to_url(item.get("webVideoUrl"))
     if not video_id or not url:
         return None
     meta = as_dict(item.get("videoMeta"))
     return Candidate(
         platform="tiktok",
         platform_id=str(video_id),
-        url=str(url),
+        url=url,
         media_url=None,
-        thumbnail_url=meta.get("coverUrl"),
+        thumbnail_url=to_url(meta.get("coverUrl")),
         title="",
         description=str(item.get("text") or ""),
         author=str(as_dict(item.get("authorMeta")).get("name") or ""),
@@ -56,5 +67,5 @@ class TikTokSource:
             max_items=self.actor.max_results,
             max_charge_usd=charge_cap(self.actor),
         )
-        candidates = [c for c in (parse_tiktok_item(i) for i in items) if c]
+        candidates = parse_all(parse_tiktok_item, items)
         return SourceResult(candidates, estimate_cost(len(items), self.actor))

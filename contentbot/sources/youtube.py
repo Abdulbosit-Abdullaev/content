@@ -6,7 +6,7 @@ import re
 import httpx
 
 from contentbot.models import Candidate, Keyword
-from contentbot.sources.base import SourceResult, as_query, parse_datetime, to_int
+from contentbot.sources.base import SourceResult, as_dict, as_query, parse_all, parse_datetime, to_int, to_url
 
 SEARCH_URL = "https://www.googleapis.com/youtube/v3/search"
 VIDEOS_URL = "https://www.googleapis.com/youtube/v3/videos"
@@ -28,8 +28,10 @@ def parse_video_item(item: dict) -> Candidate | None:
     if not video_id or not isinstance(video_id, str):
         return None
     snippet = item.get("snippet") or {}
-    thumbs = snippet.get("thumbnails") or {}
-    thumbnail = next((thumbs[k]["url"] for k in ("high", "medium", "default") if thumbs.get(k, {}).get("url")), None)
+    thumbs = as_dict(snippet.get("thumbnails"))
+    thumbnail = next(
+        (url for k in ("high", "medium", "default") if (url := to_url(as_dict(thumbs.get(k)).get("url")))), None
+    )
     tags = " ".join("#" + str(t).replace(" ", "") for t in (snippet.get("tags") or [])[:15])
     description = f"{snippet.get('description', '')} {tags}".strip()
     return Candidate(
@@ -82,8 +84,5 @@ class YouTubeSource:
                 params={"part": "snippet,contentDetails,statistics", "id": ",".join(ids[start : start + 50]), "key": self.api_key},
             )
             response.raise_for_status()
-            for item in response.json().get("items", []):
-                candidate = parse_video_item(item)
-                if candidate:
-                    candidates.append(candidate)
+            candidates.extend(parse_all(parse_video_item, response.json().get("items", [])))
         return SourceResult(candidates)
