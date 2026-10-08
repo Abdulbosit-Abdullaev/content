@@ -65,8 +65,10 @@ class ReviewService:
         *,
         clock: Callable[[], datetime] = utc_now,
         rng: random.Random | None = None,
+        ai_enabled: bool = True,
     ) -> None:
         self.bot = bot
+        self.ai_enabled = ai_enabled
         self.db = db
         self.settings = settings
         self.media = media
@@ -95,7 +97,8 @@ class ReviewService:
         )
 
     def preview_caption(self, v: VideoRow) -> str:
-        return build_caption(v.caption_body or texts.AI_FAILED_BODY, self.settings.footer)
+        placeholder = texts.AI_FAILED_BODY if self.ai_enabled else texts.WRITE_CAPTION_BODY
+        return build_caption(v.caption_body or placeholder, self.settings.footer)
 
     def has_music(self) -> bool:
         return bool(self._existing_tracks())

@@ -213,3 +213,9 @@ async def test_video_uploads_get_a_long_timeout(env):
     await env.service.set_sound(video_id, "mute")
     assert env.bot.named("send_video")[0]["request_timeout"] == 300
     assert env.bot.named("edit_message_media")[0]["request_timeout"] == 300
+
+
+async def test_without_ai_the_preview_asks_for_a_caption(env):
+    env.service.ai_enabled = False
+    await sent_video(env, body="")
+    assert env.bot.named("send_video")[0]["caption"].startswith(texts.WRITE_CAPTION_BODY)

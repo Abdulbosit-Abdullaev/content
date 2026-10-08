@@ -34,6 +34,7 @@ EDIT_PROMPT = "✏️ Yangi matnni yuboring (shu xabarga javob qilib)."
 EDIT_CURRENT = "Hozirgi matn (bosib nusxa oling):"
 TOO_LONG = "⚠️ Matn {n} belgiga uzun"
 AI_FAILED_BODY = "✏️ AI ishlamadi, matnni o'zingiz yozing"
+WRITE_CAPTION_BODY = "✏️ Bu video uchun matn yozing"
 
 # Messages from the daily search and posting
 SOURCE_FAILED = "⚠️ Bugun {source} ishlamadi"

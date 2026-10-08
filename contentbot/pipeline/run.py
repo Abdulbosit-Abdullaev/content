@@ -122,7 +122,8 @@ class Pipeline:
         ids = [self.db.insert_video(c, Status.FOUND, now) for c in to_check]
         summary.update(new=len(fresh), checked=len(to_check))
 
-        scores = await self.checker.score(to_check)
+        ai_enabled = self.checker is not None
+        scores = await self.checker.score(to_check) if ai_enabled else None
         ai_ok = scores is not None
         items: list[Ranked] = []
         for video_id, candidate, score in zip(ids, to_check, scores if ai_ok else [None] * len(to_check), strict=True):
@@ -134,7 +135,8 @@ class Pipeline:
 
         quota = CategoryQuota(s.candidates_per_day, s.max_per_category)
         selected: list[Ranked] = []
-        for item in rank(items, s.min_ai_score, ai_ok):
+        # Without AI, keep the platforms taking turns (each platform's most-viewed first).
+        for item in rank(items, s.min_ai_score, ai_ok) if ai_enabled else items:
             if quota.full:
                 break
             category = item.score.category if item.score else None
@@ -146,7 +148,7 @@ class Pipeline:
         summary["selected"] = len(selected)
 
         for item in selected:
-            body = await self.writer.draft(item.candidate, item.score)
+            body = await self.writer.draft(item.candidate, item.score) if self.writer is not None else ""
             self.db.update_video(item.video_id, caption_body=body, status=Status.SELECTED)
             try:
                 await self.sink.send_candidate(item.video_id)
@@ -154,7 +156,7 @@ class Pipeline:
                 log.warning("Sending video %s to review failed: %s", item.video_id, exc)
                 self.db.update_video(item.video_id, status=Status.FAILED, error=f"send failed: {exc}"[:300])
 
-        if not ai_ok and to_check:
+        if ai_enabled and not ai_ok and to_check:
             await self._notify(texts.AI_UNAVAILABLE)
         if len(selected) < s.candidates_per_day:
             await self._notify(texts.ONLY_N.format(n=len(selected)))

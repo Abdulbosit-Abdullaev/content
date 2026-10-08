@@ -13,11 +13,11 @@ All settings (times, counts, keywords, footer, AI model) are in `settings.yaml`.
 
 ## 2. Create the API keys
 
-- **Claude:** https://console.anthropic.com → add a payment card → API keys → `ANTHROPIC_API_KEY`.
+- **Claude (optional, paid):** https://console.anthropic.com → add a payment card → API keys → `ANTHROPIC_API_KEY`. Leave it empty to run without AI: videos are picked by views, and you write each caption with ✏️ Matnni tahrirlash. Add the key later and restart to switch AI on.
 - **YouTube:** https://console.cloud.google.com → new project → enable "YouTube Data API v3" → Credentials → Create API key → `YOUTUBE_API_KEY`.
 - **Apify:** https://apify.com → sign up (free plan, $5 credit every month) → Settings → API & Integrations → `APIFY_TOKEN`.
 
-Copy `.env.example` to `.env` and fill in all six values. Values in `.env` always win over system environment variables with the same name.
+Copy `.env.example` to `.env` and fill in the values (the Claude key is optional). Values in `.env` always win over system environment variables with the same name.
 
 ## 3. Add calm music
 
@@ -83,7 +83,7 @@ Copy `data/bot.db`, `settings.yaml`, `.env` and `music/`.
 
 ## Costs (estimate)
 
-YouTube API: free. Apify: within the free $5/month at the default limits. Claude (Opus 5.5): about $10–20/month; set `ai.model: claude-sonnet-5-5` in `settings.yaml` for about half.
+YouTube API: free. Apify: within the free $5/month at the default limits. Claude: optional. Without a key it costs $0; with a key, Opus 5.5 is about $10–20/month, or set `ai.model: claude-sonnet-5-5` in `settings.yaml` for about half.
 
 ## For developers
 

@@ -56,7 +56,7 @@ class Secrets:
     telegram_bot_token: str
     review_chat_id: int
     channel_id: str
-    anthropic_api_key: str
+    anthropic_api_key: str | None  # None = run without AI
     youtube_api_key: str
     apify_token: str
 
@@ -89,6 +89,7 @@ SECRET_VARS = (
     "YOUTUBE_API_KEY",
     "APIFY_TOKEN",
 )
+OPTIONAL_SECRET_VARS = ("ANTHROPIC_API_KEY",)
 
 
 def parse_hhmm(value: Any) -> time:
@@ -157,7 +158,7 @@ def load_secrets(env_file: str | Path | None = ".env") -> Secrets:
     if env_file and Path(env_file).exists():
         # .env wins over variables inherited from the system (e.g. another bot's token).
         load_dotenv(env_file, override=True)
-    missing = [var for var in SECRET_VARS if not os.environ.get(var)]
+    missing = [var for var in SECRET_VARS if var not in OPTIONAL_SECRET_VARS and not os.environ.get(var)]
     if missing:
         raise ConfigError("Missing in .env: " + ", ".join(missing))
     try:
@@ -168,7 +169,7 @@ def load_secrets(env_file: str | Path | None = ".env") -> Secrets:
         telegram_bot_token=os.environ["TELEGRAM_BOT_TOKEN"],
         review_chat_id=review_chat_id,
         channel_id=os.environ["CHANNEL_ID"],
-        anthropic_api_key=os.environ["ANTHROPIC_API_KEY"],
+        anthropic_api_key=os.environ.get("ANTHROPIC_API_KEY") or None,
         youtube_api_key=os.environ["YOUTUBE_API_KEY"],
         apify_token=os.environ["APIFY_TOKEN"],
     )

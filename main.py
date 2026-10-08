@@ -80,13 +80,14 @@ def build_pipeline(
     *,
     dry_run: bool = False,
 ) -> Pipeline:
-    claude = ClaudeJSON(settings.ai_model, api_key=secrets.anthropic_api_key)
+    # No Anthropic key: run without AI (videos picked by views, captions written by people).
+    claude = ClaudeJSON(settings.ai_model, api_key=secrets.anthropic_api_key) if secrets.anthropic_api_key else None
     return Pipeline(
         db=db,
         settings=settings,
         sources=build_sources(http, settings, secrets),
-        checker=RelevanceChecker(claude, http),
-        writer=CaptionWriter(claude, settings.caption_examples),
+        checker=RelevanceChecker(claude, http) if claude else None,
+        writer=CaptionWriter(claude, settings.caption_examples) if claude else None,
         downloader=Downloader(
             http,
             settings.data_dir / "videos",
@@ -129,7 +130,11 @@ async def run_bot(settings: Settings, secrets: Secrets) -> None:
     scheduler = AsyncIOScheduler(timezone=settings.timezone)
     try:
         async with make_http() as http:
-            review = ReviewService(bot, db, settings, secrets, Media(settings.ffmpeg_path, settings.ffprobe_path))
+            ai_enabled = secrets.anthropic_api_key is not None
+            log.info("AI check and caption drafts: %s", "on" if ai_enabled else "off (no ANTHROPIC_API_KEY)")
+            review = ReviewService(
+                bot, db, settings, secrets, Media(settings.ffmpeg_path, settings.ffprobe_path), ai_enabled=ai_enabled
+            )
             pipeline = build_pipeline(db, settings, secrets, http, review)
             publisher = Publisher(bot, db, settings, secrets)
             commands = CommandService(bot, db, settings, secrets, pipeline)

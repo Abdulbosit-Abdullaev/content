@@ -71,3 +71,11 @@ def test_second_copy_of_the_bot_exits(monkeypatch, capsys):
         lock.release()
     assert code == 3
     assert "already running" in capsys.readouterr().err
+
+
+async def test_pipeline_without_anthropic_key_runs_without_ai(tmp_path):
+    settings = make_settings(tmp_path)
+    db = Database(":memory:")
+    async with httpx.AsyncClient() as http:
+        pipeline = build_pipeline(db, settings, make_secrets(anthropic_api_key=None), http, PrintSink(db))
+    assert pipeline.checker is None and pipeline.writer is None

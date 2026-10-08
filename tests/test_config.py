@@ -92,3 +92,10 @@ def test_env_file_wins_over_inherited_environment(monkeypatch, tmp_path):
     env_file = tmp_path / ".env"
     env_file.write_text("TELEGRAM_BOT_TOKEN=from-file\n", encoding="utf-8")
     assert load_secrets(env_file).telegram_bot_token == "from-file"
+
+
+def test_anthropic_key_is_optional(monkeypatch):
+    values = dict(zip(SECRET_VARS, ("1:abc", "-100123", "@test", "", "y", "a"), strict=True))
+    for key, value in values.items():
+        monkeypatch.setenv(key, value)
+    assert load_secrets(None).anthropic_api_key is None

@@ -288,3 +288,17 @@ async def test_print_sink_report():
     await sink.notify("note")
     report = sink.report()
     assert "score=8 foam" in report and "#porolon Zo'r!" in report and "NOTE: note" in report
+
+
+async def test_without_ai_platforms_take_turns_and_captions_are_left_to_people(tmp_path):
+    cands = [
+        make_candidate(platform_id="y1", views=9000),
+        make_candidate(platform_id="y2", views=8000),
+        make_candidate(platform="pinterest", platform_id="p1", views=None),
+    ]
+    pipeline, db, sink, _ = build(tmp_path, [FakeSource("mixed", cands)], None, candidates_per_day=2)
+    pipeline.writer = None
+    await pipeline.run()
+    assert sent_ids(db, sink) == ["y1", "p1"]
+    assert video_by_pid(db, "y1").caption_body == ""
+    assert texts.AI_UNAVAILABLE not in sink.notes
