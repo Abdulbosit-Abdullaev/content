@@ -1,22 +1,28 @@
+import sys
+from pathlib import Path
+
 import httpx
 import pytest
 
-from contentbot.pipeline.downloader import DownloadError, Downloader
+from contentbot.pipeline.downloader import DownloadError, Downloader, run_ytdlp
 from tests.factories import make_candidate
 
 VIDEO_URL = "https://cdn.example/v.mp4"
 
 
 class FakeYtdlp:
+    """Stands in for the yt-dlp process: records the command and writes the output file."""
+
     def __init__(self, fail: bool = False) -> None:
-        self.calls = []
+        self.calls: list[list[str]] = []
         self.fail = fail
 
-    def __call__(self, url, dest, options):
-        self.calls.append((url, dest, options))
+    async def __call__(self, command):
+        self.calls.append(command)
         if self.fail:
-            raise RuntimeError("yt-dlp says no")
-        dest.write_bytes(b"from-ytdlp")
+            raise DownloadError("yt-dlp failed: says no")
+        template = command[command.index("-o") + 1]
+        Path(template.replace(".%(ext)s", ".mp4")).write_bytes(b"from-ytdlp")
 
 
 async def fetch(tmp_path, candidate, ytdlp, **kwargs):
@@ -39,7 +45,7 @@ async def test_expired_signed_url_falls_back_to_ytdlp(tmp_path, respx_mock):
     candidate = make_candidate(platform="instagram", media_url=VIDEO_URL, url="https://www.instagram.com/p/C9abc/")
     path = await fetch(tmp_path, candidate, ytdlp)
     assert path.read_bytes() == b"from-ytdlp"
-    assert ytdlp.calls[0][0] == "https://www.instagram.com/p/C9abc/"
+    assert ytdlp.calls[0][-1] == "https://www.instagram.com/p/C9abc/"
     assert not (tmp_path / "7_src.part").exists()
 
 
@@ -61,11 +67,22 @@ async def test_ytdlp_failure_raises_download_error(tmp_path):
         await fetch(tmp_path, make_candidate(), FakeYtdlp(fail=True))
 
 
-async def test_ytdlp_options(tmp_path):
+async def test_ytdlp_runs_as_a_separate_process(tmp_path):
     ytdlp = FakeYtdlp()
     await fetch(tmp_path, make_candidate(), ytdlp, cookies_file="/srv/cookies.txt")
-    options = ytdlp.calls[0][2]
-    assert options["cookiefile"] == "/srv/cookies.txt"
-    assert options["outtmpl"].endswith("7_src.%(ext)s")
-    assert options["merge_output_format"] == "mp4"
-    assert options["noplaylist"] is True
+    command = ytdlp.calls[0]
+    assert command[:3] == [sys.executable, "-m", "yt_dlp"]
+    assert command[command.index("--cookies") + 1] == "/srv/cookies.txt"
+    assert command[command.index("-o") + 1].endswith("7_src.%(ext)s")
+    assert command[command.index("--merge-output-format") + 1] == "mp4"
+    assert "--no-playlist" in command
+
+
+async def test_run_ytdlp_reports_process_errors():
+    with pytest.raises(DownloadError, match="boom"):
+        await run_ytdlp([sys.executable, "-c", "import sys; sys.exit('boom')"])
+
+
+async def test_run_ytdlp_stops_a_stuck_process():
+    with pytest.raises(DownloadError, match="timed out"):
+        await run_ytdlp([sys.executable, "-c", "import time; time.sleep(30)"], timeout_s=0.5)

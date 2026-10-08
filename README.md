@@ -54,7 +54,7 @@ Optional auto-restart: see `deploy/contentbot.service`.
 
 ## 7. Weekly maintenance
 
-Platforms change often, so update yt-dlp once a week and restart the bot:
+Platforms change often, so update yt-dlp once a week. The bot starts yt-dlp fresh for every download, so no restart is needed:
 
 ```bash
 .venv/bin/python -m pip install -U yt-dlp

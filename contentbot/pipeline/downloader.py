@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Callable
+import sys
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 import httpx
@@ -17,17 +18,26 @@ USER_AGENT = (
     "(KHTML, like Gecko) Chrome/128.0 Safari/537.36"
 )
 YTDLP_FORMAT = "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/b"
+YTDLP_TIMEOUT_S = 600
 
 
 class DownloadError(Exception):
     """The video could not be downloaded."""
 
 
-def run_ytdlp(url: str, dest: Path, options: dict) -> None:
-    import yt_dlp
-
-    with yt_dlp.YoutubeDL(options) as ydl:
-        ydl.download([url])
+async def run_ytdlp(command: list[str], timeout_s: float = YTDLP_TIMEOUT_S) -> None:
+    """Run yt-dlp as its own process, so a weekly `pip install -U yt-dlp` applies without restarting the bot."""
+    proc = await asyncio.create_subprocess_exec(
+        *command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+    )
+    try:
+        _, err = await asyncio.wait_for(proc.communicate(), timeout=timeout_s)
+    except TimeoutError:
+        proc.kill()
+        await proc.wait()
+        raise DownloadError(f"yt-dlp timed out after {timeout_s:g} s") from None
+    if proc.returncode != 0:
+        raise DownloadError(f"yt-dlp failed: {err.decode(errors='replace').strip()[-300:]}")
 
 
 class Downloader:
@@ -39,7 +49,7 @@ class Downloader:
         cookies_file: str | None = None,
         ffmpeg_path: str = "ffmpeg",
         max_bytes: int = 300 * 1024 * 1024,
-        ytdlp_fn: Callable[[str, Path, dict], None] | None = None,
+        ytdlp_fn: Callable[[list[str]], Awaitable[None]] | None = None,
     ) -> None:
         self.http = http
         self.videos_dir = videos_dir
@@ -58,7 +68,9 @@ class Downloader:
             except Exception as exc:  # expired link, login page, network error: try yt-dlp next
                 log.info("Direct download failed for %s: %s; trying yt-dlp", candidate.url, exc)
         try:
-            await asyncio.to_thread(self._ytdlp, candidate.url, dest, self._ytdlp_options(dest))
+            await self._ytdlp(self._ytdlp_command(candidate.url, dest))
+        except DownloadError:
+            raise
         except Exception as exc:
             raise DownloadError(f"yt-dlp failed: {exc}") from exc
         if not dest.exists() or dest.stat().st_size == 0:
@@ -87,20 +99,20 @@ class Downloader:
         finally:
             part.unlink(missing_ok=True)
 
-    def _ytdlp_options(self, dest: Path) -> dict:
-        options = {
-            "format": YTDLP_FORMAT,
-            "outtmpl": str(dest.with_suffix("")) + ".%(ext)s",
-            "merge_output_format": "mp4",
-            "postprocessors": [{"key": "FFmpegVideoRemuxer", "preferedformat": "mp4"}],
-            "noplaylist": True,
-            "quiet": True,
-            "no_warnings": True,
-            "max_filesize": self.max_bytes,
-            "http_headers": {"User-Agent": USER_AGENT},
-        }
+    def _ytdlp_command(self, url: str, dest: Path) -> list[str]:
+        command = [
+            sys.executable, "-m", "yt_dlp",
+            "--no-playlist", "--quiet", "--no-warnings",
+            "-f", YTDLP_FORMAT,
+            "--merge-output-format", "mp4",
+            "--remux-video", "mp4",
+            "--max-filesize", str(self.max_bytes),
+            "--add-headers", f"User-Agent:{USER_AGENT}",
+            "-o", str(dest.with_suffix("")) + ".%(ext)s",
+        ]
         if self.cookies_file:
-            options["cookiefile"] = self.cookies_file
+            command += ["--cookies", self.cookies_file]
         if self.ffmpeg_path != "ffmpeg":
-            options["ffmpeg_location"] = self.ffmpeg_path
-        return options
+            command += ["--ffmpeg-location", self.ffmpeg_path]
+        command.append(url)
+        return command
